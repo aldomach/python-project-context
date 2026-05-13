@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-Project Context Generator - CLI
-Versión de línea de comandos para generar contexto de proyectos Python.
+Python Project Context Generator - Unified
+Interfaz gráfica y línea de comandos en un solo archivo.
 Multiplataforma: Windows, Linux, macOS
+
+Uso:
+    python project_context_generator.py              # Abre la UI
+    python project_context_generator.py <directorio> # Modo CLI
+    python project_context_generator.py --help       # Ayuda
+
+VERSION: 2.0.0-UNIFIED
 """
 
 import argparse
@@ -12,6 +19,10 @@ from pathlib import Path
 from typing import List, Dict
 from datetime import datetime
 
+
+# ============================================================================
+# CORE - Lógica compartida entre CLI y UI
+# ============================================================================
 
 class CodeStructureExtractor(ast.NodeVisitor):
     """Extrae la estructura de un archivo Python sin implementación"""
@@ -244,63 +255,73 @@ class ProjectContextGenerator:
         content.append(f"**Generado:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         content.append(f"**Ruta:** `{self.project_path}`\n")
         
-        # Árbol de directorios
-        if include_tree:
-            self.log("Generando árbol de directorios...")
-            content.append("## 📁 Estructura de Directorios\n")
-            content.append("```")
-            content.append(f"{project_name}/")
-            tree_lines = self.generate_tree(self.project_path)
-            content.extend(tree_lines)
-            content.append("```\n")
-        
-        # Buscar archivos Python
-        self.log("Buscando archivos Python...")
-        python_files = self.find_python_files()
-        self.log(f"Encontrados {len(python_files)} archivos Python")
-        
-        # Índice de módulos
-        if include_index:
-            self.log("Generando índice de módulos...")
-            content.append(self.generate_module_index(python_files))
-            content.append("\n")
-        
-        # Estructura de código
-        if include_structure:
-            self.log("Extrayendo estructura de código...")
-            content.append("## 🔧 Estructura de Código\n")
+        try:
+            # Árbol de directorios
+            if include_tree:
+                self.log("Generando árbol de directorios...")
+                content.append("## 📁 Estructura de Directorios\n")
+                content.append("```")
+                content.append(f"{project_name}/")
+                tree_lines = self.generate_tree(self.project_path)
+                content.extend(tree_lines)
+                content.append("```\n")
             
-            for py_file in python_files:
-                rel_path = py_file.relative_to(self.project_path)
-                self.log(f"Procesando: {rel_path}")
+            # Buscar archivos Python
+            self.log("Buscando archivos Python...")
+            python_files = self.find_python_files()
+            self.log(f"Encontrados {len(python_files)} archivos Python")
+            
+            # Índice de módulos
+            if include_index:
+                self.log("Generando índice de módulos...")
+                content.append(self.generate_module_index(python_files))
+                content.append("\n")
+            
+            # Estructura de código
+            if include_structure:
+                self.log("Extrayendo estructura de código...")
+                content.append("## 🔧 Estructura de Código\n")
                 
-                content.append(f"\n### 📄 {rel_path}\n")
-                
-                if full_structure:
-                    content.append("```python")
-                    content.append(self.process_python_file(py_file))
-                    content.append("```\n")
-                else:
-                    content.append(self.extract_quick_structure(py_file))
-                    content.append("\n")
+                for py_file in python_files:
+                    rel_path = py_file.relative_to(self.project_path)
+                    self.log(f"Procesando: {rel_path}")
+                    
+                    content.append(f"\n### 📄 {rel_path}\n")
+                    
+                    if full_structure:
+                        content.append("```python")
+                        content.append(self.process_python_file(py_file))
+                        content.append("```\n")
+                    else:
+                        content.append(self.extract_quick_structure(py_file))
+                        content.append("\n")
+        
+        except Exception as e:
+            content.append(f"\n⚠️ Error durante la generación: {e}\n")
+            if self.verbose:
+                import traceback
+                content.append(f"\n```\n{traceback.format_exc()}\n```\n")
         
         return "\n".join(content)
 
 
-def main():
-    """Función principal CLI"""
+# ============================================================================
+# CLI - Interfaz de línea de comandos
+# ============================================================================
+
+def run_cli():
+    """Ejecuta la interfaz de línea de comandos"""
     parser = argparse.ArgumentParser(
         description="🐍 Generador de Contexto de Proyectos Python",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos de uso:
-  %(prog)s /ruta/proyecto                    # Genera contexto completo
-  %(prog)s /ruta/proyecto --quick            # Estructura rápida (solo firmas)
-  %(prog)s /ruta/proyecto --tree-only        # Solo árbol de directorios
-  %(prog)s /ruta/proyecto --index-only       # Solo índice de módulos
-  %(prog)s /ruta/proyecto -o contexto.md     # Especifica archivo de salida
-  %(prog)s .                                 # Proyecto actual
-  %(prog)s . --ui                            # Abre interfaz gráfica
+  %(prog)s                           # Abre interfaz gráfica
+  %(prog)s /ruta/proyecto            # Genera contexto por CLI
+  %(prog)s . --quick                 # Estructura rápida (solo firmas)
+  %(prog)s . --tree-only             # Solo árbol de directorios
+  %(prog)s . -o contexto.md          # Especifica archivo de salida
+  %(prog)s --ui                      # Fuerza abrir UI
         """
     )
     
@@ -308,8 +329,7 @@ Ejemplos de uso:
         'project_path',
         type=str,
         nargs='?',
-        default='.',
-        help='Ruta del proyecto (default: directorio actual)'
+        help='Ruta del proyecto (omitir para abrir UI)'
     )
     
     parser.add_argument(
@@ -357,21 +377,14 @@ Ejemplos de uso:
     parser.add_argument(
         '--ui',
         action='store_true',
-        help='Abre la interfaz gráfica'
+        help='Fuerza abrir interfaz gráfica'
     )
     
     args = parser.parse_args()
     
-    # Si se pide UI, importar y ejecutar
-    if args.ui:
-        try:
-            from project_context_generator_ui import main as ui_main
-            ui_main()
-            return
-        except ImportError:
-            print("❌ Error: PyQt6 no está instalado")
-            print("Instala con: pip install PyQt6")
-            sys.exit(1)
+    # Si no hay argumentos o se pide UI explícitamente, abrir UI
+    if args.project_path is None or args.ui:
+        return run_ui()
     
     # Validar ruta del proyecto
     project_path = Path(args.project_path).resolve()
@@ -428,6 +441,389 @@ Ejemplos de uso:
     except Exception as e:
         print(f"\n❌ Error al generar contexto: {e}")
         sys.exit(1)
+
+
+# ============================================================================
+# UI - Interfaz gráfica
+# ============================================================================
+
+def run_ui():
+    """Ejecuta la interfaz gráfica"""
+    try:
+        from PyQt6.QtWidgets import (
+            QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+            QPushButton, QLabel, QLineEdit, QTextEdit, QFileDialog,
+            QCheckBox, QGroupBox, QProgressBar, QTabWidget, QMessageBox,
+            QComboBox
+        )
+        from PyQt6.QtCore import Qt, QThread, pyqtSignal
+        from PyQt6.QtGui import QFont
+    except ImportError:
+        print("❌ Error: PyQt6 no está instalado")
+        print("\nPara usar la interfaz gráfica, instala PyQt6:")
+        print("  pip install PyQt6")
+        print("\nO usa el modo CLI:")
+        print("  python project_context_generator.py <directorio>")
+        sys.exit(1)
+    
+    class ContextGeneratorWorker(QThread):
+        """Worker thread para generar contexto sin bloquear la UI"""
+        
+        progress = pyqtSignal(int, str)
+        finished = pyqtSignal(str)
+        error = pyqtSignal(str)
+        
+        def __init__(self, project_path: Path, options: dict):
+            super().__init__()
+            self.project_path = project_path
+            self.options = options
+        
+        def run(self):
+            try:
+                generator = ProjectContextGenerator(self.project_path, verbose=False)
+                
+                self.progress.emit(10, "Iniciando generación...")
+                
+                content = generator.generate_context(
+                    include_tree=self.options.get('tree', True),
+                    include_index=self.options.get('index', True),
+                    include_structure=self.options.get('structure', True),
+                    full_structure=self.options.get('full_structure', False)
+                )
+                
+                self.progress.emit(100, "¡Completado!")
+                self.finished.emit(content)
+                
+            except Exception as e:
+                self.error.emit(str(e))
+    
+    class MainWindow(QMainWindow):
+        """Ventana principal de la aplicación"""
+        
+        def __init__(self):
+            super().__init__()
+            self.setWindowTitle("🐍 Python Project Context Generator")
+            self.setGeometry(100, 100, 1200, 800)
+            
+            self.worker = None
+            self.init_ui()
+        
+        def init_ui(self):
+            """Inicializa la interfaz de usuario"""
+            central_widget = QWidget()
+            self.setCentralWidget(central_widget)
+            
+            main_layout = QVBoxLayout(central_widget)
+            
+            # Título
+            title = QLabel("Python Project Context Generator")
+            title_font = QFont()
+            title_font.setPointSize(16)
+            title_font.setBold(True)
+            title.setFont(title_font)
+            title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            main_layout.addWidget(title)
+            
+            # Selector de proyecto
+            project_group = QGroupBox("📁 Proyecto")
+            project_layout = QHBoxLayout()
+            
+            self.project_path_input = QLineEdit()
+            self.project_path_input.setPlaceholderText("Selecciona la carpeta del proyecto...")
+            project_layout.addWidget(self.project_path_input)
+            
+            browse_btn = QPushButton("Examinar...")
+            browse_btn.clicked.connect(self.browse_project)
+            project_layout.addWidget(browse_btn)
+            
+            project_group.setLayout(project_layout)
+            main_layout.addWidget(project_group)
+            
+            # Opciones
+            options_group = QGroupBox("⚙️ Opciones de Generación")
+            options_layout = QVBoxLayout()
+            
+            # Fila 1
+            row1 = QHBoxLayout()
+            self.tree_check = QCheckBox("Árbol de directorios")
+            self.tree_check.setChecked(True)
+            row1.addWidget(self.tree_check)
+            
+            self.index_check = QCheckBox("Índice de módulos")
+            self.index_check.setChecked(True)
+            row1.addWidget(self.index_check)
+            
+            self.structure_check = QCheckBox("Estructura de código")
+            self.structure_check.setChecked(True)
+            row1.addWidget(self.structure_check)
+            
+            options_layout.addLayout(row1)
+            
+            # Fila 2
+            row2 = QHBoxLayout()
+            
+            structure_label = QLabel("Nivel de detalle:")
+            row2.addWidget(structure_label)
+            
+            self.detail_combo = QComboBox()
+            self.detail_combo.addItems(["Firmas rápidas", "Estructura completa"])
+            row2.addWidget(self.detail_combo)
+            
+            row2.addWidget(QLabel("    Estilo de árbol:"))
+            
+            self.tree_style_combo = QComboBox()
+            self.tree_style_combo.addItems(["ASCII", "Unicode", "ASCII +", "Simple", "Dots"])
+            self.tree_style_combo.setCurrentIndex(0)  # ASCII por defecto
+            self.tree_style_combo.setToolTip("Estilo de caracteres para el árbol de directorios")
+            row2.addWidget(self.tree_style_combo)
+            
+            row2.addStretch()
+            
+            
+            options_layout.addLayout(row2)
+            
+            options_group.setLayout(options_layout)
+            main_layout.addWidget(options_group)
+            
+            # Botones de acción
+            buttons_layout = QHBoxLayout()
+            
+            self.generate_btn = QPushButton("🚀 Generar Contexto")
+            self.generate_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 10px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #45a049;
+                }
+                QPushButton:disabled {
+                    background-color: #cccccc;
+                }
+            """)
+            self.generate_btn.clicked.connect(self.generate_context)
+            buttons_layout.addWidget(self.generate_btn)
+            
+            self.save_btn = QPushButton("💾 Guardar como...")
+            self.save_btn.setEnabled(False)
+            self.save_btn.clicked.connect(self.save_context)
+            buttons_layout.addWidget(self.save_btn)
+            
+            self.copy_btn = QPushButton("📋 Copiar al portapapeles")
+            self.copy_btn.setEnabled(False)
+            self.copy_btn.clicked.connect(self.copy_to_clipboard)
+            buttons_layout.addWidget(self.copy_btn)
+            
+            main_layout.addLayout(buttons_layout)
+            
+            # Barra de progreso
+            self.progress_bar = QProgressBar()
+            self.progress_bar.setVisible(False)
+            main_layout.addWidget(self.progress_bar)
+            
+            self.status_label = QLabel("")
+            self.status_label.setStyleSheet("color: #666; font-style: italic;")
+            main_layout.addWidget(self.status_label)
+            
+            # Tabs para vista previa y ayuda
+            self.tabs = QTabWidget()
+            
+            # Tab de vista previa
+            self.preview_text = QTextEdit()
+            self.preview_text.setReadOnly(True)
+            self.preview_text.setFont(QFont("Courier", 10))
+            self.tabs.addTab(self.preview_text, "📄 Vista Previa")
+            
+            # Tab de ayuda
+            help_text = QTextEdit()
+            help_text.setReadOnly(True)
+            help_text.setHtml("""
+                <h2>📖 Ayuda de Uso</h2>
+                
+                <h3>¿Qué hace esta herramienta?</h3>
+                <p>Genera un archivo de contexto de tu proyecto Python que incluye:</p>
+                <ul>
+                    <li><b>Árbol de directorios:</b> Estructura completa del proyecto</li>
+                    <li><b>Índice de módulos:</b> Lista de archivos con sus descripciones</li>
+                    <li><b>Estructura de código:</b> Firmas de clases y funciones sin implementación</li>
+                </ul>
+                
+                <h3>¿Para qué sirve?</h3>
+                <p>Perfecto para compartir con Claude u otros LLMs para que entiendan tu proyecto sin pasarle todo el código completo.</p>
+                
+                <h3>Opciones:</h3>
+                <ul>
+                    <li><b>Firmas rápidas:</b> Solo nombres de clases/funciones (más compacto)</li>
+                    <li><b>Estructura completa:</b> Incluye tipos de argumentos y docstrings</li>
+                </ul>
+                
+                <h3>Uso por consola:</h3>
+                <pre>
+# Abrir UI (sin argumentos)
+python project_context_generator.py
+
+# Generar por CLI
+python project_context_generator.py /ruta/proyecto
+
+# Solo árbol de directorios
+python project_context_generator.py . --tree-only
+
+# Estructura rápida
+python project_context_generator.py . --quick
+                </pre>
+                
+                <h3>💡 Tip:</h3>
+                <p>Guarda el archivo generado como <code>PROJECT_CONTEXT.md</code> y pásaselo a Claude al inicio de cada conversación sobre tu proyecto.</p>
+            """)
+            self.tabs.addTab(help_text, "❓ Ayuda")
+            
+            main_layout.addWidget(self.tabs)
+        
+        def browse_project(self):
+            """Abre diálogo para seleccionar proyecto"""
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                "Seleccionar carpeta del proyecto",
+                str(Path.home())
+            )
+            
+            if folder:
+                self.project_path_input.setText(folder)
+        
+        def generate_context(self):
+            """Genera el contexto del proyecto"""
+            project_path = self.project_path_input.text().strip()
+            
+            if not project_path:
+                QMessageBox.warning(self, "Error", "Por favor selecciona un proyecto")
+                return
+            
+            project_path = Path(project_path)
+            
+            if not project_path.exists():
+                QMessageBox.warning(self, "Error", "La ruta del proyecto no existe")
+                return
+            
+            # Preparar opciones
+            tree_style_map = {0: 'ascii', 1: 'unicode', 2: 'ascii_plus', 3: 'simple', 4: 'dots'}
+            
+            options = {
+                'tree': self.tree_check.isChecked(),
+                'index': self.index_check.isChecked(),
+                'structure': self.structure_check.isChecked(),
+                'full_structure': self.detail_combo.currentIndex() == 1,
+                'tree_style': tree_style_map[self.tree_style_combo.currentIndex()]
+            }
+            
+            # Deshabilitar botones
+            self.generate_btn.setEnabled(False)
+            self.save_btn.setEnabled(False)
+            self.copy_btn.setEnabled(False)
+            
+            # Mostrar barra de progreso
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            
+            # Crear y ejecutar worker
+            self.worker = ContextGeneratorWorker(project_path, options)
+            self.worker.progress.connect(self.update_progress)
+            self.worker.finished.connect(self.on_generation_finished)
+            self.worker.error.connect(self.on_generation_error)
+            self.worker.start()
+        
+        def update_progress(self, value: int, message: str):
+            """Actualiza la barra de progreso"""
+            self.progress_bar.setValue(value)
+            self.status_label.setText(message)
+        
+        def on_generation_finished(self, content: str):
+            """Maneja la finalización de la generación"""
+            self.preview_text.setPlainText(content)
+            
+            # Habilitar botones
+            self.generate_btn.setEnabled(True)
+            self.save_btn.setEnabled(True)
+            self.copy_btn.setEnabled(True)
+            
+            # Ocultar barra de progreso
+            self.progress_bar.setVisible(False)
+            self.status_label.setText("✅ Contexto generado exitosamente")
+            
+            # Cambiar a tab de vista previa
+            self.tabs.setCurrentIndex(0)
+            
+            QMessageBox.information(self, "Éxito", "¡Contexto generado exitosamente!")
+        
+        def on_generation_error(self, error_msg: str):
+            """Maneja errores en la generación"""
+            self.generate_btn.setEnabled(True)
+            self.progress_bar.setVisible(False)
+            self.status_label.setText("❌ Error al generar contexto")
+            
+            QMessageBox.critical(self, "Error", f"Error al generar contexto:\n{error_msg}")
+        
+        def save_context(self):
+            """Guarda el contexto en un archivo"""
+            content = self.preview_text.toPlainText()
+            
+            if not content:
+                QMessageBox.warning(self, "Error", "No hay contenido para guardar")
+                return
+            
+            file_path, _ = QFileDialog.getSaveFileName(
+                self,
+                "Guardar contexto",
+                str(Path.home() / "PROJECT_CONTEXT.md"),
+                "Markdown Files (*.md);;All Files (*)"
+            )
+            
+            if file_path:
+                try:
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    QMessageBox.information(self, "Éxito", f"Contexto guardado en:\n{file_path}")
+                    self.status_label.setText(f"💾 Guardado en: {Path(file_path).name}")
+                
+                except Exception as e:
+                    QMessageBox.critical(self, "Error", f"Error al guardar:\n{str(e)}")
+        
+        def copy_to_clipboard(self):
+            """Copia el contenido al portapapeles"""
+            content = self.preview_text.toPlainText()
+            
+            if content:
+                clipboard = QApplication.clipboard()
+                clipboard.setText(content)
+                
+                QMessageBox.information(self, "Copiado", "¡Contenido copiado al portapapeles!")
+                self.status_label.setText("📋 Copiado al portapapeles")
+    
+    # Ejecutar UI
+    app = QApplication(sys.argv)
+    app.setStyle('Fusion')
+    
+    window = MainWindow()
+    window.show()
+    
+    sys.exit(app.exec())
+
+
+# ============================================================================
+# MAIN - Punto de entrada
+# ============================================================================
+
+def main():
+    """Función principal"""
+    # Si no hay argumentos de línea de comandos (solo el nombre del script), abrir UI
+    if len(sys.argv) == 1:
+        run_ui()
+    else:
+        run_cli()
 
 
 if __name__ == "__main__":
