@@ -6,6 +6,21 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.0.0/).
 
 ---
 
+## [0.0.5] - 2026-05-13
+
+### Cambiado
+- **Migración de PyQt6 a PySide6** como backend de la interfaz gráfica
+  - `from PyQt6.QtCore import pyqtSignal` → `from PySide6.QtCore import Signal`
+  - Todos los imports de `PyQt6.*` reemplazados por `PySide6.*`
+  - Las señales del worker (`progress`, `finished`, `error`) ahora usan `Signal` en lugar de `pyqtSignal`
+- Mensaje de error de instalación actualizado: indica `pip install PySide6`
+- Versión interna actualizada a `0.0.5`
+
+### Eliminado
+- Dependencia de `PyQt6`
+
+---
+
 ## [0.0.4] - 2026-02-05
 
 ### Agregado

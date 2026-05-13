@@ -56,10 +56,10 @@ python project_context_generator.py /ruta/proyecto -v
 
 No requiere instalación. Solo descarga el archivo y ejecútalo.
 
-Para usar la **interfaz gráfica**, instala PyQt6:
+Para usar la **interfaz gráfica**, instala PySide6:
 
 ```bash
-pip install PyQt6
+pip install PySide6
 ```
 
 ---
@@ -149,7 +149,7 @@ Por defecto se ignoran:
 ## 📋 Requisitos
 
 - Python 3.8+
-- PyQt6 (solo para la interfaz gráfica): `pip install PyQt6`
+- PySide6 (solo para la interfaz gráfica): `pip install PySide6`
 
 ---
 
