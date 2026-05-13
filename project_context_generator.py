@@ -9,7 +9,7 @@ Uso:
     python project_context_generator.py <directorio> # Modo CLI
     python project_context_generator.py --help       # Ayuda
 
-VERSION: 2.0.0-UNIFIED
+VERSION: 0.0.5
 """
 
 import argparse
@@ -444,24 +444,24 @@ Ejemplos de uso:
 
 
 # ============================================================================
-# UI - Interfaz gráfica
+# UI - Interfaz gráfica (PySide6)
 # ============================================================================
 
 def run_ui():
     """Ejecuta la interfaz gráfica"""
     try:
-        from PyQt6.QtWidgets import (
+        from PySide6.QtWidgets import (
             QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
             QPushButton, QLabel, QLineEdit, QTextEdit, QFileDialog,
             QCheckBox, QGroupBox, QProgressBar, QTabWidget, QMessageBox,
             QComboBox
         )
-        from PyQt6.QtCore import Qt, QThread, pyqtSignal
-        from PyQt6.QtGui import QFont
+        from PySide6.QtCore import Qt, QThread, Signal
+        from PySide6.QtGui import QFont
     except ImportError:
-        print("❌ Error: PyQt6 no está instalado")
-        print("\nPara usar la interfaz gráfica, instala PyQt6:")
-        print("  pip install PyQt6")
+        print("❌ Error: PySide6 no está instalado")
+        print("\nPara usar la interfaz gráfica, instala PySide6:")
+        print("  pip install PySide6")
         print("\nO usa el modo CLI:")
         print("  python project_context_generator.py <directorio>")
         sys.exit(1)
@@ -469,9 +469,9 @@ def run_ui():
     class ContextGeneratorWorker(QThread):
         """Worker thread para generar contexto sin bloquear la UI"""
         
-        progress = pyqtSignal(int, str)
-        finished = pyqtSignal(str)
-        error = pyqtSignal(str)
+        progress = Signal(int, str)
+        finished = Signal(str)
+        error = Signal(str)
         
         def __init__(self, project_path: Path, options: dict):
             super().__init__()
@@ -578,7 +578,6 @@ def run_ui():
             row2.addWidget(self.tree_style_combo)
             
             row2.addStretch()
-            
             
             options_layout.addLayout(row2)
             
